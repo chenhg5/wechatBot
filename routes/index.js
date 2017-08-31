@@ -7,6 +7,8 @@ router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
 
-router.get('/wechat', Wechat.getIndex);
+router.get('/wechat', Wechat.getQRcode);
+
+router.get('/wechaty', Wechat.getQRcode_wechaty);
 
 module.exports = router;
