@@ -15,27 +15,29 @@ WechatApi.pass_ticket = ''
 WechatApi.cookies = ''
 WechatApi.isLogin = false
 
-WechatApi.request = (options,method='GET',data={},url='',encoding=null,cookie='') => {
+// method json get image post
+WechatApi.request = (options,method='GET',data={},url='',encoding='utf8',cookie='') => {
   return new Promise((resolve, reject) => {
     if (options) {
-      var postBody = ''
-      if (method=='POST') {
-        postBody = querystring.stringify(data);
-        options['headers'] = {
-           'Content-Type': 'application/x-www-form-urlencoded',
-           'Content-Length': postBody.length
-        }
-      }
+      // var postBody = ''
+      // if (method=='POST') {
+      //   postBody = querystring.stringify(data);
+      //   options['headers'] = {
+      //      'Content-Type': 'application/x-www-form-urlencoded',
+      //      'Content-Length': postBody.length
+      //   }
+      // }
 
       var port = options.port == 443 ? https : http;
       var req = port.request(options, function(res)
       {
-          var output = '';
+          var output;
           console.log(options.host + ':' + res.statusCode);
-          res.setEncoding('utf8');
+          res.setEncoding(encoding);
 
           res.on('data', function (chunk) {
-              output += chunk;
+              output = chunk;
+              console.info('data result: ',typeof(chunk));
           });
 
           res.on('end', function() {
@@ -57,9 +59,9 @@ WechatApi.request = (options,method='GET',data={},url='',encoding=null,cookie=''
           reject(err);
       });
 
-      if (method=='POST') {
-        req.write(postBody);
-      }
+      // if (method=='POST') {
+      //   req.write(postBody);
+      // }
 
       req.end();
     } else {
@@ -104,7 +106,7 @@ WechatApi.getQrCode = async() => {
     't'   : 'webwx',
     '_' : timestamp
   }
-  var result = await WechatApi.request(null,'POST',data,url)
+  var result = await WechatApi.request(null,'POST',data,url,null)
 
   var base64prefix = 'data:' + result.headers['content-type'] + ';base64,'
   , image = result.data.toString('base64');
@@ -181,12 +183,19 @@ WechatApi.login = async(url)=>{
   }
   console.log('log_data: ',log_data);
 
-  cookie = JSON.stringify(result.headers['set-cookie']).replace('[','').replace(']','')
+  // 非常关键
+  cookie = JSON.stringify(result.headers['set-cookie'])
+               .replace('[','').replace(']','')
+               .replace(/Domain=(.*?)"/g,'')
+               .replace(/,/g,'')
+               .replace(/"/g,'')
   WechatApi.cookies = cookie
 
   console.log('set-cookie: ',cookie);
 
-  WechatApi.wxInit(skey,wxsid,wxuin,deviceId,pass_ticket,cookie);
+  await WechatApi.wxInit(skey,wxsid,wxuin,deviceId,pass_ticket,cookie);
+
+  await WechatApi.getContacts(skey,pass_ticket,cookie)
 
   return result
 }
@@ -208,31 +217,76 @@ WechatApi.wxInit = async(skey,wxsid,wxuin,deviceId,pass_ticket,cookie)=>{
   var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=" + timestamp + '&lang=zh_CN&pass_ticket=' + pass_ticket
   var result = await WechatApi.request(null,'POST',data,url,'utf8',cookie)
 
-  console.log('wxInit result: ',result);
+  console.log('wxInit result: ',result.data);
 
-  // var contacts = WechatApi.getContacts(skey,wxsid,wxuin,deviceId,cookie)
-  // contacts.then((res)=>{
-  //   console.log('getContacts result: ',res);
-  // })
+  // WechatApi.setNotify(data['BaseRequest'],result.data['User']['UserName'],cookie)
+
+  // setTimeout(()=>{
+  //   WechatApi.getContacts(skey,pass_ticket,cookie)
+  // },3000)
 
   return result
 }
 
 // 获得联系人列表
-WechatApi.getContacts = async(skey,wxsid,wxuin,deviceId,cookie) => {
-  var data = { 
-     BaseRequest: { 
-        Uin: wxuin, 
-        Sid: wxsid, 
-        Skey: skey, 
-        DeviceID: deviceId, 
-     }
+WechatApi.getContacts = async(skey,pass_ticket,cookie) => {
+  var timestamp = new Date().getTime();
+  var path = "/cgi-bin/mmwebwx-bin/webwxgetcontact?lang=zh_CN&pass_ticket="
+          +pass_ticket+'&r='+timestamp+'&skey='+skey+'&seq=0'
+
+  console.log('path: ',path);
+  console.log('cookie: ',cookie);
+  var options = {
+    host: "wx2.qq.com",
+    path: path,
+    port: 443,
+    headers: {
+      'Cookie': cookie,
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Encoding': 'gzip, deflate, br'
+    }
   }
-  var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxgetcontact"
-  var result = await WechatApi.request(null,'POST',data,url,'utf8',cookie)
+  var result = await WechatApi.request(options,'GET',{},'',null)
+  console.info('getContacts result: ',typeof(result.data));
+  console.log('getContacts result: ',result);
+  // console.log('MemberList: ',result.data['MemberList'][0]);
   return result
 }
 
-// 
+WechatApi.setNotify = async(BaseRequest,myId,cookie)=>{
+  var ClientMsgId = new Date().getTime();
+  var data = {
+    BaseRequest: BaseRequest,
+    FromUserName: myId,
+    ToUserName: myId,
+    ClientMsgId: ClientMsgId,
+    Code: 3,
+  }
+  var url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxstatusnotify'
+  var result = await WechatApi.request(null,'POST',data,url,'utf8',cookie)
+  console.log('setNotify result: ',result);
+  return result
+}
+
+
+// 发信息给所有人
+// WechatApi.sendMsgToAll = async(pass_ticket,myId,BaseRequest)=>{
+//   var timestamp = new Date().getTime();
+
+//   var data = { 
+//     BaseRequest: BaseRequest,
+//     Msg: { 
+//          Type: 1, 
+//          Content: '你好', 
+//          FromUserName: , 
+//          ToUserName: , 
+//          LocalID: , 
+//          ClientMsgId:  
+//      } 
+//   }
+//   var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?pass_ticket=" + pass_ticket
+//   var result = await WechatApi.request(null,'POST',data,url,'utf8',cookie)
+//   return result  
+// }
 
 module.exports = WechatApi
