@@ -4,11 +4,12 @@ var Wechat  = require('../controllers/wechat.js');
 
 
 router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+  res.render('index');
 });
 
-router.get('/wechat', Wechat.getQRcode);
-
-router.get('/wechaty', Wechat.getQRcode_wechaty);
+router.get('/qrcode', Wechat.getQRcode);
+router.get('/gift', function(req, res, next){
+  res.render('gift');
+});
 
 module.exports = router;
