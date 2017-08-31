@@ -32,6 +32,7 @@ WechatApi.request = (options,method='GET',data={},url='') => {
                   try {
                     resolve({
                         statusCode: res.statusCode,
+                        headers: res.headers,
                         data: output
                     });
                   } catch (err){
@@ -52,19 +53,51 @@ WechatApi.request = (options,method='GET',data={},url='') => {
 
           req.end();
         } else {
-          request.default({encoding:null})
+          request.defaults({encoding:null}).post(url,{json:data},function (error, response, body) {
+              if (!error && response.statusCode == 200) {
+                var base64prefix = 'data:' + response.headers['content-type'] + ';base64,'
+                , image = body.toString('base64');
+                resolve({
+                    statusCode: response.statusCode,
+                    headers: response.headers,
+                    data: base64prefix+image
+                });
+              } else {
+                reject('errors')
+              }
+            }
+          );
         }
       })
 }
 
-WechatApi.getUUID = async()=>{
-
+WechatApi.getUUID = async() => {
+  var timestamp = new Date().getTime();
+  var options = {
+    host: "login.weixin.qq.com",
+    path: "/jslogin?appid=wx782c26e4c19acffb&fun=new&lang=zh_CN&_=" + timestamp,
+    port: 443
+  }
+  var result = await WechatApi.request(options)
+  matches = result.data.match(/; window.QRLogin.uuid = "(.*?)"/)
+  result.data = matches ? matches[1] : ''
+  return result
 }
 
-WechatApi.qrCode = async()=>{
-  
+WechatApi.getQrCode = async() => {
+  var timestamp = new Date().getTime();
+  var uuid = await WechatApi.getUUID()
+  var url = ' https://login.weixin.qq.com/qrcode/' + uuid.data;
+  var data = {
+    't'   : 'webwx',
+    '_' : timestamp
+  }
+  var result = await WechatApi.request(null,'POST',data,url)
+  return result
 }
 
 WechatApi.checklogin = async()=>{
   
 }
+
+module.exports = WechatApi
