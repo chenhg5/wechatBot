@@ -16,9 +16,11 @@
     "http": "0.0.0",
     "https": "^1.0.0",
     "morgan": "~1.5.1",
+    "mysql": "^2.14.1",
     "querystring": "^0.2.0",
     "request": "^2.81.0",
     "serve-favicon": "~2.2.0",
-    "wechaty": "^0.8.185"
+    "wechaty": "^0.8.185",
+    "zlib": "^1.0.5"
   }
 }

@@ -23,10 +23,10 @@ var glurl = '';
 
 
 module.exports.getQRcode = function(req, res, next) {
-  var qrcode = WechatApi.getQrCode();
+  var qrcode = WechatApi.getUUID();
   qrcode.then((code)=>{
-    console.log('WechatApi code: ',typeof(code));
-    res.render('qrcode', { data: code.data });
+    var src = 'https://login.weixin.qq.com/qrcode/'+code.data
+    res.render('qrcode', { data: src });
   })
 }
 

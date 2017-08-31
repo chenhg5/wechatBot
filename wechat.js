@@ -2,6 +2,7 @@ var http = require('http')
 var https = require('https')
 var request = require('request')
 var querystring = require('querystring')
+var zlib = require('zlib')
 
 WechatApi = {}
 
@@ -16,105 +17,47 @@ WechatApi.cookies = ''
 WechatApi.isLogin = false
 
 // method json get image post
-WechatApi.request = (options,method='GET',data={},url='',encoding='utf8',cookie='') => {
+WechatApi.request = (url,method='GET',postType='',data='',headers={},encoding='utf8') => {
   return new Promise((resolve, reject) => {
-    if (options) {
-      // var postBody = ''
-      // if (method=='POST') {
-      //   postBody = querystring.stringify(data);
-      //   options['headers'] = {
-      //      'Content-Type': 'application/x-www-form-urlencoded',
-      //      'Content-Length': postBody.length
-      //   }
-      // }
 
-      var port = options.port == 443 ? https : http;
-      var req = port.request(options, function(res)
-      {
-          var output;
-          console.log(options.host + ':' + res.statusCode);
-          res.setEncoding(encoding);
-
-          res.on('data', function (chunk) {
-              output = chunk;
-              console.info('data result: ',typeof(chunk));
+    request({
+      method: method,
+      encoding: encoding,
+      headers: headers,
+      url: url,
+      json: postType=='json',
+      form: postType=='form',
+      body: data
+    },
+    function (error, response, body) {
+        if (!error && response.statusCode == 200) {
+          // console.log('response: ',body);
+          resolve({
+              statusCode: response.statusCode,
+              headers: response.headers,
+              data: body
           });
-
-          res.on('end', function() {
-              try {
-                resolve({
-                    statusCode: res.statusCode,
-                    headers: res.headers,
-                    data: output
-                });
-              } catch (err){
-                console.error('rest::end', err);
-                reject(err);              
-              }
-          });
-      });
-
-      req.on('error', function(err) {
-          console.error('rest::request', err);
-          reject(err);
-      });
-
-      // if (method=='POST') {
-      //   req.write(postBody);
-      // }
-
-      req.end();
-    } else {
-      request.defaults({encoding:encoding,headers: {cookie: cookie}}).post(url,{json:data},function (error, response, body) {
-          if (!error && response.statusCode == 200) {
-            resolve({
-                statusCode: response.statusCode,
-                headers: response.headers,
-                data: body
-            });
-          } else {
-            reject('errors')
-          }
+        } else {
+          reject('errors')
         }
-      );
-    }
+      }
+    );
+
   })
 }
 
 // 获得uuid
 WechatApi.getUUID = async() => {
   var timestamp = new Date().getTime();
-  var options = {
-    host: "login.weixin.qq.com",
-    path: "/jslogin?appid=" + WechatApi.appid + "&redirect_uri=https%3A%2F%2Flogin.weixin.qq.com%2Fcgi-bin%2Fmmwebwx-bin%2Fwebwxnewloginpage&fun=new&lang=zh_CN&_=" + timestamp,
-    port: 443
-  }
-  var result = await WechatApi.request(options)
+  var url = "https://login.weixin.qq.com/jslogin?appid=" + WechatApi.appid + "&redirect_uri=https%3A%2F%2Flogin.weixin.qq.com%2Fcgi-bin%2Fmmwebwx-bin%2Fwebwxnewloginpage&fun=new&lang=zh_CN&_=" + timestamp
+  var result = await WechatApi.request(url)
   matches = result.data.match(/; window.QRLogin.uuid = "(.*?)"/)
   result.data = matches ? matches[1] : ''
   console.log('uuid result',result);
-  return result
-}
-
-// 获得二维码
-WechatApi.getQrCode = async() => {
-  var timestamp = new Date().getTime();
-  var res = await WechatApi.getUUID()
-  var uuid = res.data
-  var url = 'https://login.weixin.qq.com/qrcode/' + uuid;
-  var data = {
-    't'   : 'webwx',
-    '_' : timestamp
-  }
-  var result = await WechatApi.request(null,'POST',data,url,null)
-
-  var base64prefix = 'data:' + result.headers['content-type'] + ';base64,'
-  , image = result.data.toString('base64');
-  result.data = base64prefix + image;
 
   // 循环调用检查是否登录
   var checklogin = setInterval(()=>{
-    WechatApi.checklogin(uuid)
+    WechatApi.checklogin(result.data)
   },1000)
 
   setTimeout(()=>{
@@ -128,12 +71,8 @@ WechatApi.getQrCode = async() => {
 // 微信确认登录
 WechatApi.checklogin = async(uuid)=>{
   var timestamp = new Date().getTime();
-  var options = {
-    host: "login.weixin.qq.com",
-    path: "/cgi-bin/mmwebwx-bin/login?tip=0&_=" + timestamp + "&uuid=" + uuid,
-    port: 443
-  }
-  var result = await WechatApi.request(options)
+  var url = "https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=0&_=" + timestamp + "&uuid=" + uuid
+  var result = await WechatApi.request(url)
   // console.log('result: ',result);
   matches = result.data.match(/window.code=(.*?);/)
   code = matches ? matches[1] : ''
@@ -153,12 +92,11 @@ WechatApi.checklogin = async(uuid)=>{
 WechatApi.login = async(url)=>{
   matches = url.match(/https:\/\/wx2.qq.com\/cgi-bin\/mmwebwx-bin\/webwxnewloginpage\?(.*)/)
   console.log('matches: ',matches[1]);
-  var options = {
-    host: "wx2.qq.com",
-    path: "/cgi-bin/mmwebwx-bin/webwxnewloginpage?" + matches[1],
-    port: 443
+  var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxnewloginpage?version=2&fun=new&" + matches[1]
+  var headers = {
+    'Accept': ':application/json, text/plain, */*'
   }
-  var result = await WechatApi.request(options)
+  var result = await WechatApi.request(url,'GET','','',headers)
   console.log('login result: ',result);
 
   skey_matches = result.data.match(/<skey>(.*?)<\/skey>/)
@@ -193,9 +131,15 @@ WechatApi.login = async(url)=>{
 
   console.log('set-cookie: ',cookie);
 
-  await WechatApi.wxInit(skey,wxsid,wxuin,deviceId,pass_ticket,cookie);
+  try {
 
-  await WechatApi.getContacts(skey,pass_ticket,cookie)
+    await WechatApi.wxInit(skey,wxsid,wxuin,deviceId,pass_ticket,cookie);
+
+    await WechatApi.getContacts(skey,pass_ticket,cookie)
+  
+  } catch(err) {
+    console.error('err: ',err);
+  }
 
   return result
 }
@@ -215,7 +159,7 @@ WechatApi.wxInit = async(skey,wxsid,wxuin,deviceId,pass_ticket,cookie)=>{
 
   var timestamp = new Date().getTime();
   var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=" + timestamp + '&lang=zh_CN&pass_ticket=' + pass_ticket
-  var result = await WechatApi.request(null,'POST',data,url,'utf8',cookie)
+  var result = await WechatApi.request(url,'POST','json',data)
 
   console.log('wxInit result: ',result.data);
 
@@ -231,25 +175,23 @@ WechatApi.wxInit = async(skey,wxsid,wxuin,deviceId,pass_ticket,cookie)=>{
 // 获得联系人列表
 WechatApi.getContacts = async(skey,pass_ticket,cookie) => {
   var timestamp = new Date().getTime();
-  var path = "/cgi-bin/mmwebwx-bin/webwxgetcontact?lang=zh_CN&pass_ticket="
+  var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxgetcontact?lang=zh_CN&pass_ticket="
           +pass_ticket+'&r='+timestamp+'&skey='+skey+'&seq=0'
 
-  console.log('path: ',path);
   console.log('cookie: ',cookie);
-  var options = {
-    host: "wx2.qq.com",
-    path: path,
-    port: 443,
-    headers: {
-      'Cookie': cookie,
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Encoding': 'gzip, deflate, br'
-    }
+
+  var headers = {
+    'Cookie': cookie,
+    'Accept': 'application/json, text/plain, */*'
   }
-  var result = await WechatApi.request(options,'GET',{},'',null)
-  console.info('getContacts result: ',typeof(result.data));
-  console.log('getContacts result: ',result);
-  // console.log('MemberList: ',result.data['MemberList'][0]);
+
+  var result = await WechatApi.request(url,'GET','','',headers)
+
+  var friendList = JSON.parse(result.data)
+
+  console.info('getContacts result: ',typeof(JSON.parse(result.data)));
+  console.log('MemberList: ',friendList['MemberList'][0]);
+
   return result
 }
 
@@ -263,7 +205,10 @@ WechatApi.setNotify = async(BaseRequest,myId,cookie)=>{
     Code: 3,
   }
   var url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxstatusnotify'
-  var result = await WechatApi.request(null,'POST',data,url,'utf8',cookie)
+  var headers = {
+    'Cookie':cookie
+  }
+  var result = await WechatApi.request(url,'POST','json',data,headers)
   console.log('setNotify result: ',result);
   return result
 }
@@ -285,7 +230,10 @@ WechatApi.setNotify = async(BaseRequest,myId,cookie)=>{
 //      } 
 //   }
 //   var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?pass_ticket=" + pass_ticket
-//   var result = await WechatApi.request(null,'POST',data,url,'utf8',cookie)
+//   var headers = {
+//     'Cookie':cookie
+//   }
+//   var result = await WechatApi.request(url,'POST','json',data,headers)
 //   return result  
 // }
 
