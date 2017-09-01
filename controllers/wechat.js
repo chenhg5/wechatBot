@@ -16,7 +16,7 @@ module.exports = {
     console.log('getCodeState state: ',code[0].state);
     res.json({'state':code[0].state});
   },
-  sendAllFriends: async(req, res, next) => {
+  sendAllFriends : async(req, res, next) => {
     var code = await Code.get(req.body.code)
     var BaseRequest = { 
       'Uin': code[0].wxuin, 
