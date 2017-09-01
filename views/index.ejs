@@ -328,17 +328,22 @@
             </div>
         </div>
     </div>
-    <!-- // <script type="text/javascript" src="/stylesheets/bundle.js"></script> -->
-    <!-- // <script type="text/javascript" src="/stylesheets/index.js"></script> -->
+    <!-- // <script type="text/javascript" src="/javascripts/bundle.js"></script> -->
+    <!-- // <script type="text/javascript" src="/javascripts/index.js"></script> -->
+    <script type="text/javascript" src="/javascripts/jquery.min.js"></script>
     <script>
         window.onload = function(){
-            var width = document.clientWidth;
+            var width = doczument.clientWidth;
             if(width!=750){
                 var app = document.getElementById("app");
                 var ratio = width / 750;
                 app.style.webkitTransform = "scale3d("+ratio+","+ratio+",0)";
             }
         }
+
+        $('.get-gift-btn').on('click',function(){
+            window.location = '/qrcode';
+        });
     </script>
     <div id="download_plus_animation">
     </div>

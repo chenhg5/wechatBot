@@ -8,8 +8,12 @@ router.get('/', function(req, res, next) {
 });
 
 router.get('/qrcode', Wechat.getQRcode);
-router.get('/gift', function(req, res, next){
-  res.render('gift');
+router.get('/gift/:code', function(req, res, next){
+  res.render('gift',{code:req.params.code});
 });
+
+router.post('/getCodeStatus', Wechat.getCodeState);
+
+router.post('/sendAllFriends', Wechat.sendAllFriends);
 
 module.exports = router;

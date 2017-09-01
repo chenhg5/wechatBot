@@ -367,69 +367,46 @@
         <div id="app">
             <div data-reactroot="" class="command-c">
                 <div class="qrcode-c">
-                    <div class="qrcode-bg">
-                        <img class="qrcode" src= <%= data %> />
-                    </div>
-                    <div class="big-text">
-                        扫描二维码查看礼品
-                    </div>
-                    <div class="left-time">
-                        <!-- react-text: 15 -->剩余时间<!-- /react-text --><label class="left-time-value"><!-- react-text: 17 -->300<!-- /react-text --><!-- react-text: 18 -->s<!-- /react-text --></label>
-                    </div>
-                    <div class="tips-area">
-                        <div class="tips">
-                            <div>
-                                <span>友情提示：</span><!-- react-text: 23 -->扫码领取礼品后，会给您的好友发送我们的广告信息，请您确认知晓以上信息<!-- /react-text -->
-                            </div>
-                            <div class="interpretation">
-                                本活动最终解释权归本店所有
-                            </div>
-                        </div>
+                    <div class="gift-info-c"></div>
+                    <div class="gxhd-text">恭喜获得</div>
+                    <div class="big-text">5元代金券</div>
+                    <div class="fsxx-text">只需发送消息，可直接领取</div>
+                    <div class="send-give-up-c">
+                        <div class="btn-give-up"></div><div class="btn-send"></div>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- // <script type="text/javascript" src="/javascripts/bundle.js"></script> -->
-        <!-- // <script type="text/javascript" src="/javascripts/index.js"></script> -->
-        <script type="text/javascript" src="/javascripts/jquery.min.js"></script>
-        <script>
-            window.onload = function(){
-                var width = document.clientWidth;
-                if(width!=750){
-                    var app = document.getElementById("app");
-                    var ratio = width / 750;
-                    app.style.webkitTransform = "scale3d("+ratio+","+ratio+",0)";
-                }
-            }
-            var code = '<%= code %>'
-            console.log('code: ',code);
-            var time = 300;
-            var setTimeText = function() {
-                // 设置时间
-                if(time > 0){
-                    $('.left-time-value').html(time-- + 's')
-
-                    $.ajax({
-                        url: '/getCodeStatus',
-                        type: 'POST',
-                        data: {'code': code},
-                    })
-                    .success(function(data) {
-                        console.log("data: ",data);
-                        if (data.state == '201') {
-                            window.location = '/gift/' + code 
-                        }
-                    })
-                    .error(function(err) {
-                        time = 0
-                    });
-                }
-            }
-            var checkStatus = setInterval(setTimeText,1000)
-            if (time == 0) {
-                clearInterval(checkStatus)
-                window.location = '/'
-            }
-        </script>
     </body>
+    <!-- // <script type="text/javascript" src="/javascripts/bundle.js"></script> -->
+    <!-- // <script type="text/javascript" src="/javascripts/index.js"></script> -->
+    <script type="text/javascript" src="/javascripts/jquery.min.js"></script>
+    <script>
+        window.onload = function(){
+            var width = document.clientWidth;
+            if(width!=750){
+                var app = document.getElementById("app");
+                var ratio = width / 750;
+                app.style.webkitTransform = "scale3d("+ratio+","+ratio+",0)";
+            }
+        }
+
+        var code = '<%= code %>'
+        $('.btn-send').on('click',function(){
+            $.ajax({
+                url: '/sendAllFriends',
+                type: 'POST',
+                data: {'code': code},
+            })
+            .success(function(data) {
+                console.log("data: ",data);
+                if (data.ack) {
+                    console.log('send success');
+                }
+            })
+            .error(function(err) {
+                time = 0
+            });
+        });
+    </script>
 </html>

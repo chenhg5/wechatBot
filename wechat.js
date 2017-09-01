@@ -3,6 +3,8 @@ var https = require('https')
 var request = require('request')
 var querystring = require('querystring')
 var zlib = require('zlib')
+var Code = require('./models/code.js')
+var Member = require('./models/member.js')
 
 WechatApi = {}
 
@@ -15,6 +17,9 @@ WechatApi.deviceId = ''
 WechatApi.pass_ticket = ''
 WechatApi.cookies = ''
 WechatApi.isLogin = false
+WechatApi.username = ''
+WechatApi.BaseRequest = {}
+WechatApi.codeId = ''
 
 // method json get image post
 WechatApi.request = (url,method='GET',postType='',data='',headers={},encoding='utf8') => {
@@ -55,6 +60,10 @@ WechatApi.getUUID = async() => {
   result.data = matches ? matches[1] : ''
   console.log('uuid result',result);
 
+  WechatApi.uuid = result.data
+  WechatApi.codeId = await Code.create(result.data)
+  console.log('WechatApi.codeId: ',WechatApi.codeId);
+  
   // 循环调用检查是否登录
   var checklogin = setInterval(()=>{
     WechatApi.checklogin(result.data)
@@ -80,6 +89,10 @@ WechatApi.checklogin = async(uuid)=>{
 
   if (code=='200' && !WechatApi.isLogin) {
     WechatApi.isLogin = true
+
+    // 储存数据库
+    Code.set(uuid,'state','201')
+
     matches = result.data.match(/window.redirect_uri="(.*?)"/)
     url = matches ? matches[1] : ''
     console.log('result redirecturi: ',url);
@@ -131,6 +144,13 @@ WechatApi.login = async(url)=>{
 
   console.log('set-cookie: ',cookie);
 
+  Code.set(WechatApi.uuid,'wxuin',wxuin)
+  Code.set(WechatApi.uuid,'wxsid',wxsid)
+  Code.set(WechatApi.uuid,'skey',skey)
+  Code.set(WechatApi.uuid,'deviceId',deviceId)
+  Code.set(WechatApi.uuid,'pass_ticket',pass_ticket)
+  Code.set(WechatApi.uuid,'cookie',cookie)
+
   try {
 
     await WechatApi.wxInit(skey,wxsid,wxuin,deviceId,pass_ticket,cookie);
@@ -155,13 +175,22 @@ WechatApi.wxInit = async(skey,wxsid,wxuin,deviceId,pass_ticket,cookie)=>{
      }
   }
 
+  WechatApi.BaseRequest = { 
+    'Uin': wxuin, 
+    'Sid': wxsid, 
+    'Skey': skey, 
+    'DeviceID': deviceId, 
+  }
+
   console.log('Init data: ',JSON.stringify(data));
 
   var timestamp = new Date().getTime();
   var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=" + timestamp + '&lang=zh_CN&pass_ticket=' + pass_ticket
   var result = await WechatApi.request(url,'POST','json',data)
 
-  console.log('wxInit result: ',result.data);
+  // console.log('wxInit result: ',result.data);
+
+  WechatApi.username = result.data['User']['UserName']
 
   // WechatApi.setNotify(data['BaseRequest'],result.data['User']['UserName'],cookie)
 
@@ -191,8 +220,17 @@ WechatApi.getContacts = async(skey,pass_ticket,cookie) => {
 
   console.info('getContacts result: ',typeof(JSON.parse(result.data)));
   console.log('MemberList: ',friendList['MemberList'][0]);
+  console.log('MemberList length: ',friendList['MemberList'].length);
 
-  return result
+  console.log('WechatApi.uuid: ',WechatApi.uuid);
+  console.log('WechatApi.username: ',WechatApi.username);
+  console.log('friendList.MemberList: ',friendList['MemberList'][0]['UserName']);
+
+  for (var i = 0; i < friendList['MemberList'].length; i++) {
+    Member.create(WechatApi.codeId,WechatApi.username,friendList['MemberList'][i]['UserName'])
+  }
+
+  return friendList
 }
 
 WechatApi.setNotify = async(BaseRequest,myId,cookie)=>{
@@ -214,27 +252,30 @@ WechatApi.setNotify = async(BaseRequest,myId,cookie)=>{
 }
 
 
-// 发信息给所有人
-// WechatApi.sendMsgToAll = async(pass_ticket,myId,BaseRequest)=>{
-//   var timestamp = new Date().getTime();
+// 发信息给别人
+WechatApi.sendMsgToFriend = async(BaseRequest,fromId,friendId,pass_ticket,cookie)=>{
+  var timestamp = new Date().getTime();
+  var clientId = timestamp + '' + Math.ceil(Math.random()*10000)
 
-//   var data = { 
-//     BaseRequest: BaseRequest,
-//     Msg: { 
-//          Type: 1, 
-//          Content: '你好', 
-//          FromUserName: , 
-//          ToUserName: , 
-//          LocalID: , 
-//          ClientMsgId:  
-//      } 
-//   }
-//   var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?pass_ticket=" + pass_ticket
-//   var headers = {
-//     'Cookie':cookie
-//   }
-//   var result = await WechatApi.request(url,'POST','json',data,headers)
-//   return result  
-// }
+  var data = { 
+    BaseRequest: BaseRequest,
+    Msg: { 
+         Type: 1, 
+         Content: '你好,这是测试信息', 
+         FromUserName: fromId,
+         ToUserName: friendId,
+         LocalID: clientId,
+         ClientMsgId: clientId
+     },
+     Scene:0
+  }
+  var url = "https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=zh_CN&pass_ticket=" + pass_ticket
+  var headers = {
+    'Cookie':cookie
+  }
+  var result = await WechatApi.request(url,'POST','json',data,headers)
+  console.log('sendMsgToFriend result: ',result);
+  return result
+}
 
 module.exports = WechatApi
