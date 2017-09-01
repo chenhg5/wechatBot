@@ -20,6 +20,7 @@ WechatApi.isLogin = false
 WechatApi.username = ''
 WechatApi.BaseRequest = {}
 WechatApi.codeId = ''
+WechatApi.checkloginInterval = ''
 
 // method json get image post
 WechatApi.request = (url,method='GET',postType='',data='',headers={},encoding='utf8') => {
@@ -63,16 +64,17 @@ WechatApi.getUUID = async() => {
   WechatApi.uuid = result.data
   WechatApi.codeId = await Code.create(result.data)
   console.log('WechatApi.codeId: ',WechatApi.codeId);
-  
+  WechatApi.isLogin = false
+
   // 循环调用检查是否登录
-  var checklogin = setInterval(()=>{
+  WechatApi.checkloginInterval = setInterval(()=>{
     WechatApi.checklogin(result.data)
   },1000)
 
-  setTimeout(()=>{
-    console.log('clearInterval');
-    clearInterval(checklogin);
-  },6000000)
+  // setTimeout(()=>{
+  //   console.log('clearInterval');
+  //   clearInterval(checklogin);
+  // },6000000)
 
   return result
 }
@@ -89,6 +91,8 @@ WechatApi.checklogin = async(uuid)=>{
 
   if (code=='200' && !WechatApi.isLogin) {
     WechatApi.isLogin = true
+
+    clearInterval(WechatApi.checkloginInterval);
 
     // 储存数据库
     Code.set(uuid,'state','201')
