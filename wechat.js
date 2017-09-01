@@ -72,7 +72,7 @@ WechatApi.getUUID = async() => {
   setTimeout(()=>{
     console.log('clearInterval');
     clearInterval(checklogin);
-  },10000)
+  },6000000)
 
   return result
 }
@@ -273,6 +273,9 @@ WechatApi.sendMsgToFriend = async(BaseRequest,fromId,friendId,pass_ticket,cookie
   var headers = {
     'Cookie':cookie
   }
+
+  console.log('send data: ',data);
+
   var result = await WechatApi.request(url,'POST','json',data,headers)
   console.log('sendMsgToFriend result: ',result);
   return result

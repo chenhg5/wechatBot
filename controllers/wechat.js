@@ -33,7 +33,7 @@ module.exports = {
 
     for (var i = 0; i < friends.length; i++) {
       console.log('sendingMsg');
-      WechatApi.sendMsgToFriend(BaseRequest,friends.myId,friends.memberId,pass_ticket,cookie)
+      WechatApi.sendMsgToFriend(BaseRequest,friends[i].myId,friends[i].memberId,pass_ticket,cookie)
     }
 
     res.json({'ack':true});
