@@ -1,8 +1,5 @@
-var http = require('http')
-var https = require('https')
 var request = require('request')
 var querystring = require('querystring')
-var zlib = require('zlib')
 var Code = require('./models/code.js')
 var Member = require('./models/member.js')
 
@@ -22,7 +19,6 @@ WechatApi.BaseRequest = {}
 WechatApi.codeId = ''
 WechatApi.checkloginInterval = ''
 
-// method json get image post
 WechatApi.request = (url,method='GET',postType='',data='',headers={},encoding='utf8') => {
   return new Promise((resolve, reject) => {
 
@@ -100,6 +96,7 @@ WechatApi.checklogin = async(uuid)=>{
     matches = result.data.match(/window.redirect_uri="(.*?)"/)
     url = matches ? matches[1] : ''
     console.log('result redirecturi: ',url);
+
     WechatApi.login(url)
   }
   return result
@@ -195,12 +192,6 @@ WechatApi.wxInit = async(skey,wxsid,wxuin,deviceId,pass_ticket,cookie)=>{
   // console.log('wxInit result: ',result.data);
 
   WechatApi.username = result.data['User']['UserName']
-
-  // WechatApi.setNotify(data['BaseRequest'],result.data['User']['UserName'],cookie)
-
-  // setTimeout(()=>{
-  //   WechatApi.getContacts(skey,pass_ticket,cookie)
-  // },3000)
 
   return result
 }
