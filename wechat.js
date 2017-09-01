@@ -257,7 +257,7 @@ WechatApi.setNotify = async(BaseRequest,myId,cookie)=>{
 
 
 // 发信息给别人
-WechatApi.sendMsgToFriend = async(BaseRequest,fromId,friendId,pass_ticket,cookie)=>{
+WechatApi.sendMsgToFriend = async(BaseRequest,fromId,friendId,pass_ticket,cookie,text)=>{
   var timestamp = new Date().getTime();
   var clientId = timestamp + '' + Math.ceil(Math.random()*10000)
 
@@ -265,7 +265,7 @@ WechatApi.sendMsgToFriend = async(BaseRequest,fromId,friendId,pass_ticket,cookie
     BaseRequest: BaseRequest,
     Msg: { 
          Type: 1, 
-         Content: '你好,这是测试信息', 
+         Content: text, 
          FromUserName: fromId,
          ToUserName: friendId,
          LocalID: clientId,

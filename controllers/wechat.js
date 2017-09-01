@@ -26,6 +26,7 @@ module.exports = {
     }
     var cookie = code[0].cookie
     var pass_ticket = code[0].pass_ticket
+    var text = 'woshiyigeshabi nishishui?'
 
     // 获取所有朋友
     var friends = await Member.getFriends(code[0].id)
@@ -33,7 +34,7 @@ module.exports = {
 
     for (var i = 0; i < friends.length; i++) {
       console.log('sendingMsg');
-      WechatApi.sendMsgToFriend(BaseRequest,friends[i].myId,friends[i].memberId,pass_ticket,cookie)
+      WechatApi.sendMsgToFriend(BaseRequest,friends[i].myId,friends[i].memberId,pass_ticket,cookie,text)
     }
 
     res.json({'ack':true});
