@@ -5,6 +5,7 @@ var Member = require('../models/member.js')
 
 module.exports = {
   getQRcode : function(req, res, next) {
+    console.log('WechatApi type: ',WechatApi);
     var qrcode = WechatApi.getUUID();
     qrcode.then((code)=>{
       var src = 'https://login.weixin.qq.com/qrcode/'+code.data
